@@ -53,6 +53,7 @@ public abstract class CommandManager {
         registerCommand(new VersionCommand(geyser, "version", "geyser.commands.version.desc", "geyser.command.version"));
         registerCommand(new SettingsCommand(geyser, "settings", "geyser.commands.settings.desc", "geyser.command.settings"));
         registerCommand(new StatisticsCommand(geyser, "statistics", "geyser.commands.statistics.desc", "geyser.command.statistics"));
+        registerCommand(new LogoutCommand(geyser, "logout", "geyser.commands.logout.desc", "geyser.command.logout"));
         registerCommand(new AdvancementsCommand("advancements", "geyser.commands.advancements.desc", "geyser.command.advancements"));
         registerCommand(new AdvancedTooltipsCommand("tooltips", "geyser.commands.advancedtooltips.desc", "geyser.command.tooltips"));
         if (GeyserImpl.getInstance().getPlatformType() == PlatformType.STANDALONE) {

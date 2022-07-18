@@ -645,6 +645,14 @@ public class GeyserImpl implements GeyserApi {
         }
     }
 
+    public void removeAccessTokenPair(@NonNull String xuid) {
+        // We can safely overwrite old instances because MsaAuthenticationService#getLoginResponseFromRefreshToken
+        // refreshes the token for us
+        if (savedAccessTokensPair.remove(xuid) != null) {
+            scheduleAccessTokenPairsWrite();
+        }
+    }
+
     private void scheduleAccessTokenPairsWrite() {
         scheduledThread.execute(() -> {
             // Ensure all writes are handled on the same thread
