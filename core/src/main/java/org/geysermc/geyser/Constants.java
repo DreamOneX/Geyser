@@ -39,6 +39,8 @@ public final class Constants {
 
     static final String SAVED_REFRESH_TOKEN_FILE = "saved-refresh-tokens.json";
 
+    static final String SAVED_ACCESS_TOKEN_FILE = "saved-access-tokens.json";
+
     static {
         URI wsUri = null;
         try {

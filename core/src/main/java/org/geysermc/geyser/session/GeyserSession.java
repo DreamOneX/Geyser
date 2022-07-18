@@ -156,6 +156,9 @@ public class GeyserSession implements GeyserConnection, CommandSender {
      */
     private final @Nonnull EventLoop eventLoop;
     private TcpSession downstream;
+    @Getter
+    @Setter
+    private boolean valid;
     @Setter
     private AuthData authData;
     @Setter
@@ -652,10 +655,10 @@ public class GeyserSession implements GeyserConnection, CommandSender {
     }
 
     public void authenticate(String username) {
-        authenticate(username, "");
+        authenticate(username, "", false);
     }
 
-    public void authenticate(String username, String password) {
+    public void authenticate(String username, String password, boolean saveAccessToken) {
         if (loggedIn) {
             geyser.getLogger().severe(GeyserLocale.getLocaleStringLog("geyser.auth.already_loggedin", username));
             return;
@@ -671,7 +674,7 @@ public class GeyserSession implements GeyserConnection, CommandSender {
                     if (microsoftAccount) {
                         authenticationService = new MsaAuthenticationService(GeyserImpl.OAUTH_CLIENT_ID);
                     } else {
-                        authenticationService = new MojangAuthenticationService();
+                        authenticationService = new MojangAuthenticationService(this.uuid().toString());
                     }
                     authenticationService.setUsername(username);
                     authenticationService.setPassword(password);
@@ -685,6 +688,9 @@ public class GeyserSession implements GeyserConnection, CommandSender {
                     }
 
                     protocol = new MinecraftProtocol(profile, authenticationService.getAccessToken());
+                    if (saveAccessToken) { // already confirm it is not microsoft account
+                        geyser.saveAccessTokenPair(xuid(), authenticationService.getUsername() + ":" + authenticationService.getAccessToken());
+                    }
                 } else {
                     // always replace spaces when using Floodgate,
                     // as usernames with spaces cause issues with Bungeecord's login cycle.
@@ -757,6 +763,54 @@ public class GeyserSession implements GeyserConnection, CommandSender {
                 connect();
                 // Will be cached for after login
                 LoginEncryptionUtils.buildAndShowTokenExpiredWindow(this);
+                return;
+            }
+
+            connectDownstream();
+        });
+    }
+
+    public void authenticateWithAccessToken(String accessTokenPair) {
+        if (loggedIn) {
+            geyser.getLogger().severe(GeyserLocale.getLocaleStringLog("geyser.auth.already_loggedin", getAuthData().name()));
+            return;
+        }
+
+        loggingIn = true;
+
+        // Use a future to prevent timeouts as all the authentication is handled sync
+        CompletableFuture.supplyAsync(() -> {
+            String[] accessTokenSplit = accessTokenPair.split(":");
+            MojangAuthenticationService service = new MojangAuthenticationService(this.uuid().toString());
+            service.setUsername(accessTokenSplit[0]);
+            service.setAccessToken(accessTokenSplit[1]);
+            try {
+                service.login();
+            } catch (RequestException e) {
+                geyser.getLogger().error("Error while attempting to use access token for " + name() + "!", e);
+                return Boolean.FALSE;
+            }
+
+            GameProfile profile = service.getSelectedProfile();
+            if (profile == null) {
+                // Java account is offline
+                disconnect(GeyserLocale.getPlayerLocaleString("geyser.network.remote.invalid_account", clientData.getLanguageCode()));
+                return null;
+            }
+
+            protocol = new MinecraftProtocol(profile, service.getAccessToken());
+            geyser.saveAccessTokenPair(this.xuid(), service.getUsername() + ":" + service.getAccessToken());
+            return Boolean.TRUE;
+        }).whenComplete((successful, ex) -> {
+            if (this.closed) {
+                return;
+            }
+            if (successful == Boolean.FALSE) {
+                // The player is waiting for a spawn packet, so let's spawn them in now to show them forms
+                connect();
+                // Will be cached for after login
+                geyser.getLogger().debug("user go to relogin!"); // relogin in BedrockSetLocalPlayerAsInitializedTranslator
+                //LoginEncryptionUtils.buildAndShowTokenExpiredWindow(this);
                 return;
             }
 

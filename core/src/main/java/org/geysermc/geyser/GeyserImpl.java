@@ -136,6 +136,8 @@ public class GeyserImpl implements GeyserApi {
     private PendingMicrosoftAuthentication pendingMicrosoftAuthentication;
     @Getter(AccessLevel.NONE)
     private Map<String, String> savedRefreshTokens;
+    @Getter(AccessLevel.NONE)
+    private Map<String, String> savedAccessTokensPair;
 
     private static GeyserImpl instance;
 
@@ -462,8 +464,24 @@ public class GeyserImpl implements GeyserApi {
                     }
                 }
             }
+            savedAccessTokensPair = new ConcurrentHashMap<>();
+            tokensFile = bootstrap.getAccessTokenLoginsFolder().resolve(Constants.SAVED_ACCESS_TOKEN_FILE).toFile();
+            if (tokensFile.exists()) {
+                TypeReference<Map<String, String>> type = new TypeReference<>() { };
+
+                Map<String, String> accessTokenFile = null;
+                try {
+                    accessTokenFile = JSON_MAPPER.readValue(tokensFile, type);
+                } catch (IOException e) {
+                    logger.error("Cannot load access tokens!", e);
+                }
+                if (accessTokenFile != null) {
+                    savedAccessTokensPair.putAll(accessTokenFile);
+                }
+            }
         } else {
             savedRefreshTokens = null;
+            savedAccessTokensPair = null;
         }
 
         newsHandler.handleNews(null, NewsItemAction.ON_SERVER_STARTED);
@@ -575,7 +593,11 @@ public class GeyserImpl implements GeyserApi {
 
     @Nullable
     public String refreshTokenFor(@NonNull String bedrockName) {
-        return savedRefreshTokens.get(bedrockName);
+        try {
+            return savedRefreshTokens.get(bedrockName);
+        } catch (NullPointerException e) {
+            return null;
+        }
     }
 
     public void saveRefreshToken(@NonNull String bedrockName, @NonNull String refreshToken) {
@@ -602,6 +624,38 @@ public class GeyserImpl implements GeyserApi {
                         .writeValue(writer, savedRefreshTokens);
             } catch (IOException e) {
                 getLogger().error("Unable to write saved refresh tokens!", e);
+            }
+        });
+    }
+
+    @Nullable
+    public String accessTokenPairFor(@NonNull String xuid) {
+        try {
+            return savedAccessTokensPair.get(xuid);
+        } catch (NullPointerException e) {
+            return null;
+        }
+    }
+
+    public void saveAccessTokenPair(@NonNull String xuid, @NonNull String accessToken) {
+          // We can safely overwrite old instances because MsaAuthenticationService#getLoginResponseFromRefreshToken
+        // refreshes the token for us
+        if (!Objects.equals(accessToken, savedAccessTokensPair.put(xuid, accessToken))) {
+            scheduleAccessTokenPairsWrite();
+        }
+    }
+
+    private void scheduleAccessTokenPairsWrite() {
+        scheduledThread.execute(() -> {
+            // Ensure all writes are handled on the same thread
+            File savedTokens = getBootstrap().getAccessTokenLoginsFolder().resolve(Constants.SAVED_ACCESS_TOKEN_FILE).toFile();
+            TypeReference<Map<String, String>> type = new TypeReference<>() { };
+            try (FileWriter writer = new FileWriter(savedTokens)) {
+                JSON_MAPPER.writerFor(type)
+                        .withDefaultPrettyPrinter()
+                        .writeValue(writer, savedAccessTokensPair);
+            } catch (IOException e) {
+                getLogger().error("Unable to write saved access tokens!", e);
             }
         });
     }

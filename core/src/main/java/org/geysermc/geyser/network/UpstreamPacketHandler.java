@@ -183,6 +183,13 @@ public class UpstreamPacketHandler extends LoggingPacketHandler {
     }
 
     private boolean couldLoginUserByName(String bedrockUsername) {
+        String accessTokenPair = geyser.accessTokenPairFor(session.xuid());
+        if (accessTokenPair != null) {
+            geyser.getLogger().info(GeyserLocale.getLocaleStringLog("geyser.auth.stored_credentials", session.getAuthData().name()));
+            session.authenticateWithAccessToken(accessTokenPair);
+            return true;
+        }
+
         if (geyser.getConfig().getSavedUserLogins().contains(bedrockUsername)) {
             String refreshToken = geyser.refreshTokenFor(bedrockUsername);
             if (refreshToken != null) {
@@ -197,7 +204,7 @@ public class UpstreamPacketHandler extends LoggingPacketHandler {
             if (info != null) {
                 geyser.getLogger().info(GeyserLocale.getLocaleStringLog("geyser.auth.stored_credentials", session.getAuthData().name()));
                 session.setMicrosoftAccount(info.isMicrosoftAccount());
-                session.authenticate(info.getEmail(), info.getPassword());
+                session.authenticate(info.getEmail(), info.getPassword(), false);
                 return true;
             }
         }

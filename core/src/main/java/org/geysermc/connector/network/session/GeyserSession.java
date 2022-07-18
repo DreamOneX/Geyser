@@ -108,7 +108,7 @@ public class GeyserSession {
     }
 
     public void authenticate(String username, String password) {
-        this.handle.authenticate(username, password);
+        this.handle.authenticate(username, password, false);
     }
 
     public void authenticateWithMicrosoftCode() {

@@ -138,13 +138,14 @@ public class LoginEncryptionUtils {
             GeyserImpl geyser = session.getGeyser();
 
             boolean validChain = validateChainData(certChainData);
+            session.setValid(validChain);
 
             geyser.getLogger().debug(String.format("Is player data valid? %s", validChain));
 
-            if (!validChain && !session.getGeyser().getConfig().isEnableProxyConnections()) {
+            /*if (!validChain && !session.getGeyser().getConfig().isEnableProxyConnections()) {
                 session.disconnect(GeyserLocale.getLocaleStringLog("geyser.network.remote.invalid_xbox_account"));
                 return;
-            }
+            }*/
             JWSObject jwt = JWSObject.parse(certChainData.get(certChainData.size() - 1).asText());
             JsonNode payload = JSON_MAPPER.readTree(jwt.getPayload().toBytes());
 
@@ -291,6 +292,27 @@ public class LoginEncryptionUtils {
         );
     }
 
+    public static void buildAndShowAccessTokenExpiredWindow(GeyserSession session) {
+        session.sendForm(
+                SimpleForm.builder()
+                        .translator(LoginEncryptionUtils::translate, session.getLocale())
+                        .title("geyser.auth.login.form.expired")
+                        .content("""
+                                geyser.auth.login.access_token.expired
+
+                                geyser.auth.login.access_token.proceed""")
+                        .button("%gui.ok")
+                        .resultHandler((form, genericResult) -> {
+                            if (genericResult instanceof ValidFormResponseResult<SimpleFormResponse> result &&
+                                    result.response().clickedButtonId() == 0) {
+                                buildAndShowLoginDetailsWindow(session);
+                            } else {
+                                session.disconnect("%disconnect.quitting");
+                            }
+                        })
+        );
+    }
+
     private static BiConsumer<SimpleForm, FormResponseResult<SimpleFormResponse>> authenticateOrKickHandler(GeyserSession session) {
         return (form, genericResult) -> {
             if (genericResult instanceof ValidFormResponseResult<SimpleFormResponse> result &&
@@ -308,8 +330,9 @@ public class LoginEncryptionUtils {
                         .translator(GeyserLocale::getPlayerLocaleString, session.getLocale())
                         .title("geyser.auth.login.form.details.title")
                         .label("geyser.auth.login.form.details.desc")
-                        .input("geyser.auth.login.form.details.email", "account@geysermc.org", "")
+                        .input("geyser.auth.login.form.details.email", "account@geysermc.org", session.name())
                         .input("geyser.auth.login.form.details.pass", "123456", "")
+                        .optionalToggle("geyser.auth.login.form.details.remember", true, session.isValid() && !session.isMicrosoftAccount())
                         .invalidResultHandler(() -> buildAndShowLoginDetailsWindow(session))
                         .closedResultHandler(() -> {
                             if (session.isMicrosoftAccount()) {
@@ -318,7 +341,7 @@ public class LoginEncryptionUtils {
                                 buildAndShowLoginWindow(session);
                             }
                         })
-                        .validResultHandler((response) -> session.authenticate(response.next(), response.next())));
+                        .validResultHandler((response) -> session.authenticate(response.next(), response.next(), response.asToggle())));
     }
 
     /**
