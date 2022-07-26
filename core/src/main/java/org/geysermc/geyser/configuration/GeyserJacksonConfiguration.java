@@ -42,10 +42,7 @@ import org.geysermc.geyser.text.GeyserLocale;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Getter
@@ -61,6 +58,8 @@ public abstract class GeyserJacksonConfiguration implements GeyserConfiguration 
 
     private BedrockConfiguration bedrock = new BedrockConfiguration();
     private RemoteConfiguration remote = new RemoteConfiguration();
+
+    private List<AuthServiceInfo> authServices = Collections.emptyList();
 
     @JsonProperty("saved-user-logins")
     private List<String> savedUserLogins = Collections.emptyList();
@@ -226,6 +225,13 @@ public abstract class GeyserJacksonConfiguration implements GeyserConfiguration 
 
         @JsonProperty("forward-hostname")
         private boolean forwardHost = false;
+    }
+
+    @Getter
+    public static class AuthServiceInfo implements IAuthServiceInfo {
+        private String name;
+
+        private String apiBase;
     }
 
     @Getter

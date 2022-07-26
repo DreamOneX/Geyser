@@ -32,6 +32,7 @@ import com.github.steveice10.mc.auth.exception.request.RequestException;
 import com.github.steveice10.mc.auth.service.AuthenticationService;
 import com.github.steveice10.mc.auth.service.MojangAuthenticationService;
 import com.github.steveice10.mc.auth.service.MsaAuthenticationService;
+import com.github.steveice10.mc.auth.service.SessionService;
 import com.github.steveice10.mc.protocol.MinecraftConstants;
 import com.github.steveice10.mc.protocol.MinecraftProtocol;
 import com.github.steveice10.mc.protocol.codec.MinecraftCodecHelper;
@@ -100,6 +101,7 @@ import org.geysermc.geyser.GeyserImpl;
 import org.geysermc.geyser.api.connection.GeyserConnection;
 import org.geysermc.geyser.command.CommandSender;
 import org.geysermc.geyser.configuration.EmoteOffhandWorkaroundOption;
+import org.geysermc.geyser.configuration.GeyserConfiguration;
 import org.geysermc.geyser.entity.EntityDefinitions;
 import org.geysermc.geyser.entity.attribute.GeyserAttributeType;
 import org.geysermc.geyser.entity.type.Entity;
@@ -156,9 +158,10 @@ public class GeyserSession implements GeyserConnection, CommandSender {
      */
     private final @Nonnull EventLoop eventLoop;
     private TcpSession downstream;
-    @Getter
     @Setter
     private boolean valid;
+    @Setter
+    private int authServiceID = -1; // -1 means use mojang auth server.
     @Setter
     private AuthData authData;
     @Setter
@@ -658,6 +661,7 @@ public class GeyserSession implements GeyserConnection, CommandSender {
         authenticate(username, "", false);
     }
 
+    // when serviceID=-1, use mojang auth server.
     public void authenticate(String username, String password, boolean saveAccessToken) {
         if (loggedIn) {
             geyser.getLogger().severe(GeyserLocale.getLocaleStringLog("geyser.auth.already_loggedin", username));
@@ -678,6 +682,9 @@ public class GeyserSession implements GeyserConnection, CommandSender {
                     }
                     authenticationService.setUsername(username);
                     authenticationService.setPassword(password);
+                    if (authServiceID != -1) {
+                        authenticationService.setBaseUri(geyser.getConfig().getAuthServices().get(authServiceID).getApiBase() + "/authserver/");
+                    }
                     authenticationService.login();
 
                     GameProfile profile = authenticationService.getSelectedProfile();
@@ -689,7 +696,7 @@ public class GeyserSession implements GeyserConnection, CommandSender {
 
                     protocol = new MinecraftProtocol(profile, authenticationService.getAccessToken());
                     if (saveAccessToken) { // already confirm it is not microsoft account
-                        geyser.saveAccessTokenPair(xuid(), authenticationService.getUsername() + ":" + authenticationService.getAccessToken());
+                        geyser.saveAccessTokenPair(xuid(), authenticationService.getUsername() + ":" + authenticationService.getAccessToken() + ":" + (authServiceID != -1 ? geyser.getConfig().getAuthServices().get(authServiceID).getName() : "mojang"));
                     }
                 } else {
                     // always replace spaces when using Floodgate,
@@ -784,10 +791,14 @@ public class GeyserSession implements GeyserConnection, CommandSender {
             MojangAuthenticationService service = new MojangAuthenticationService(this.uuid().toString());
             service.setUsername(accessTokenSplit[0]);
             service.setAccessToken(accessTokenSplit[1]);
+            authServiceID = !accessTokenSplit[2].equals("mojang") ? geyser.getConfig().getAuthServices().stream().map(GeyserConfiguration.IAuthServiceInfo::getName).toList().indexOf(accessTokenSplit[2]) : -1;
+            if (authServiceID != -1) {
+                service.setBaseUri(geyser.getConfig().getAuthServices().get(authServiceID).getApiBase() + "/authserver/");
+            }
             try {
                 service.login();
             } catch (RequestException e) {
-                geyser.getLogger().error("Error while attempting to use access token for " + name() + "!", e);
+                geyser.getLogger().error("Error while attempting to use access token for " + name() + "in service: " + accessTokenSplit[2] + " !", e);
                 return Boolean.FALSE;
             }
 
@@ -799,7 +810,7 @@ public class GeyserSession implements GeyserConnection, CommandSender {
             }
 
             protocol = new MinecraftProtocol(profile, service.getAccessToken());
-            geyser.saveAccessTokenPair(this.xuid(), service.getUsername() + ":" + service.getAccessToken());
+            geyser.saveAccessTokenPair(this.xuid(), service.getUsername() + ":" + service.getAccessToken() + ":" + accessTokenSplit[2]);
             return Boolean.TRUE;
         }).whenComplete((successful, ex) -> {
             if (this.closed) {
@@ -925,6 +936,13 @@ public class GeyserSession implements GeyserConnection, CommandSender {
             // Let Geyser handle sending the keep alive
             downstream.setFlag(MinecraftConstants.AUTOMATIC_KEEP_ALIVE_MANAGEMENT, false);
         }
+
+        if (authServiceID != -1) {
+            SessionService sessionService = new SessionService();
+            sessionService.setBaseUri(geyser.getConfig().getAuthServices().get(authServiceID).getApiBase() + "/sessionserver/session/minecraft/");
+            downstream.setFlag(MinecraftConstants.SESSION_SERVICE_KEY, sessionService);
+        }
+
         downstream.addListener(new SessionAdapter() {
             @Override
             public void packetSending(PacketSendingEvent event) {

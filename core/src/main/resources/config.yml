@@ -76,6 +76,15 @@ saved-user-logins:
   - ThisExampleUsernameShouldBeLongEnoughToNeverBeAnXboxUsername
   - ThisOtherExampleUsernameShouldAlsoBeLongEnough
 
+# For online mode authentication type only.
+# Stores a list of yggdrasil servers that will be used for authentication.
+# Please enter the server name and the api root in apiBase.
+# Notice: If you change the server name, the "saved-access-tokens.json" file (which is used by autologin feature with yggdrasil tokens) will be invalid.
+# You need to delete it, and all the players using autologin will need to enter username and password when they login.
+authServices:
+  - name: example
+    apiBase: https://example.com/api/yggdrasil
+
 # Specify how many seconds to wait while user authorizes Geyser to access their Microsoft account.
 # User is allowed to disconnect from the server during this period.
 pending-authentication-timeout: 120

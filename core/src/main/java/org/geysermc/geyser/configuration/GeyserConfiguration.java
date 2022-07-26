@@ -44,6 +44,8 @@ public interface GeyserConfiguration {
 
     IRemoteConfiguration getRemote();
 
+    List<? extends IAuthServiceInfo> getAuthServices();
+
     List<String> getSavedUserLogins();
 
     @Deprecated
@@ -152,6 +154,12 @@ public interface GeyserConfiguration {
         boolean isUseProxyProtocol();
 
         boolean isForwardHost();
+    }
+
+    interface IAuthServiceInfo {
+        String getName();
+
+        String getApiBase();
     }
 
     interface IUserAuthenticationInfo {
