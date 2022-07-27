@@ -325,6 +325,7 @@ public class LoginEncryptionUtils {
 
     public static void buildAndShowLoginDetailsWindow(GeyserSession session) {
         boolean canUseAuthService = !session.isMicrosoftAccount();
+        boolean canUseRememberMe = session.isValid() && !session.isMicrosoftAccount();
         List<String> authServiceList = new ArrayList<>();
         authServiceList.add("Mojang Official");
         session.getGeyser().getConfig().getAuthServices().forEach(info -> authServiceList.add(info.getName()));
@@ -332,11 +333,14 @@ public class LoginEncryptionUtils {
                 CustomForm.builder()
                         .translator(GeyserLocale::getPlayerLocaleString, session.getLocale())
                         .title("geyser.auth.login.form.details.title")
-                        .label("geyser.auth.login.form.details.desc")
+                        .optionalLabel("geyser.auth.login.form.details.desc1", !canUseAuthService && !session.isMicrosoftAccount())
+                        .optionalLabel("geyser.auth.login.form.details.desc2", !canUseAuthService && session.isMicrosoftAccount())
+                        .optionalLabel("geyser.auth.login.form.details.desc3", canUseAuthService)
+                        .optionalLabel("geyser.auth.login.form.details.desc4", canUseRememberMe)
                         .optionalDropdown("geyser.auth.login.form.details.authserver", authServiceList, canUseAuthService)
                         .input("geyser.auth.login.form.details.email", "account@geysermc.org", session.name())
                         .input("geyser.auth.login.form.details.pass", "123456", "")
-                        .optionalToggle("geyser.auth.login.form.details.remember", true, session.isValid() && canUseAuthService)
+                        .optionalToggle("geyser.auth.login.form.details.remember", true, canUseRememberMe)
                         .invalidResultHandler(() -> buildAndShowLoginDetailsWindow(session))
                         .closedResultHandler(() -> {
                             if (session.isMicrosoftAccount()) {
@@ -346,11 +350,11 @@ public class LoginEncryptionUtils {
                             }
                         })
                         .validResultHandler((response) -> {
-                            session.setAuthServiceID(canUseAuthService ? response.asDropdown()-1 : -1);
+                            session.setAuthServiceID(canUseAuthService ? response.asDropdown(4)-1 : -1);
                             session.authenticate(
-                                    response.asInput(canUseAuthService ? 2 : 1),
-                                    response.asInput(canUseAuthService ? 3 : 2),
-                                    response.asToggle(canUseAuthService ? 4 : 3)
+                                    response.asInput(5),
+                                    response.asInput(6),
+                                    canUseRememberMe && response.asToggle(7)
                             );
                         }));
     }
