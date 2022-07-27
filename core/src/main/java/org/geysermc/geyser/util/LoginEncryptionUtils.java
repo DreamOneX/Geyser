@@ -325,7 +325,7 @@ public class LoginEncryptionUtils {
 
     public static void buildAndShowLoginDetailsWindow(GeyserSession session) {
         boolean canUseAuthService = !session.isMicrosoftAccount();
-        boolean canUseRememberMe = session.isValid() && !session.isMicrosoftAccount();
+        boolean canUseRememberMe = session.isValid() && !session.isMicrosoftAccount() && session.getGeyser().getConfig().isEnabledRememberMe();
         List<String> authServiceList = new ArrayList<>();
         authServiceList.add("Mojang Official");
         session.getGeyser().getConfig().getAuthServices().forEach(info -> authServiceList.add(info.getName()));

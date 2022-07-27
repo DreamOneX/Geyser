@@ -80,6 +80,9 @@ saved-user-logins:
   - ThisExampleUsernameShouldBeLongEnoughToNeverBeAnXboxUsername
   - ThisOtherExampleUsernameShouldAlsoBeLongEnough
 
+# Enable/Disable the remember me feature.
+enabled-remember-me: true
+
 # For online mode authentication type only.
 # Stores a list of yggdrasil servers that will be used for authentication.
 # Please enter the server name and the api root in apiBase.

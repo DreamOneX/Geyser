@@ -48,6 +48,8 @@ public interface GeyserConfiguration {
 
     List<? extends IAuthServiceInfo> getAuthServices();
 
+    boolean isEnabledRememberMe();
+
     List<String> getSavedUserLogins();
 
     @Deprecated

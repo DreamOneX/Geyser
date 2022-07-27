@@ -64,6 +64,9 @@ public abstract class GeyserJacksonConfiguration implements GeyserConfiguration 
 
     private List<AuthServiceInfo> authServices = Collections.emptyList();
 
+    @JsonProperty("enabled-remember-me")
+    private boolean isEnabledRememberMe = true;
+
     @JsonProperty("saved-user-logins")
     private List<String> savedUserLogins = Collections.emptyList();
 

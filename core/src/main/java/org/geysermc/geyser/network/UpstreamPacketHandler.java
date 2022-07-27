@@ -184,7 +184,7 @@ public class UpstreamPacketHandler extends LoggingPacketHandler {
 
     private boolean couldLoginUserByName(String bedrockUsername) {
         String accessTokenPair = geyser.accessTokenPairFor(session.xuid());
-        if (accessTokenPair != null) {
+        if (accessTokenPair != null && geyser.getConfig().isEnabledRememberMe()) {
             geyser.getLogger().info(GeyserLocale.getLocaleStringLog("geyser.auth.stored_credentials", session.getAuthData().name()));
             session.authenticateWithAccessToken(accessTokenPair);
             return true;
