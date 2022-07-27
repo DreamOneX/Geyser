@@ -84,10 +84,13 @@ saved-user-logins:
 enabled-remember-me: true
 
 # For online mode authentication type only.
-# Stores a list of yggdrasil servers that will be used for authentication.
-# Please enter the server name and the api root in apiBase.
-# Notice: If you change the server name, the "saved-access-tokens.json" file (which is used by autologin feature with yggdrasil tokens) will be invalid.
+# AuthServices stores a list of yggdrasil servers that will be used for authentication.
+# Please enter the server name and the api root in apiBase, and turn use-custom-auth-services into true, if you want to enable custom auth services.
+# Notice:
+# 1.If you change the server name, the "saved-access-tokens.json" file (which is used by autologin feature with yggdrasil tokens) will be invalid.
 # You need to delete it, and all the players using autologin will need to enter username and password when they login.
+# 2.If you disable this feature when you were enabled before, players using custom auth services to autologin will need to relogin.
+use-custom-auth-services: false
 authServices:
   - name: example
     apiBase: https://example.com/api/yggdrasil

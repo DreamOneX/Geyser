@@ -324,7 +324,7 @@ public class LoginEncryptionUtils {
     }
 
     public static void buildAndShowLoginDetailsWindow(GeyserSession session) {
-        boolean canUseAuthService = !session.isMicrosoftAccount();
+        boolean canUseAuthService = !session.isMicrosoftAccount() && session.getGeyser().getConfig().isCustomAuthServices();
         boolean canUseRememberMe = session.isValid() && !session.isMicrosoftAccount() && session.getGeyser().getConfig().isEnabledRememberMe();
         List<String> authServiceList = new ArrayList<>();
         authServiceList.add("Mojang Official");
@@ -334,7 +334,7 @@ public class LoginEncryptionUtils {
                         .translator(GeyserLocale::getPlayerLocaleString, session.getLocale())
                         .title("geyser.auth.login.form.details.title")
                         .optionalLabel("geyser.auth.login.form.details.desc1", !canUseAuthService && !session.isMicrosoftAccount())
-                        .optionalLabel("geyser.auth.login.form.details.desc2", !canUseAuthService && session.isMicrosoftAccount())
+                        .optionalLabel("geyser.auth.login.form.details.desc2", session.isMicrosoftAccount())
                         .optionalLabel("geyser.auth.login.form.details.desc3", canUseAuthService)
                         .optionalLabel("geyser.auth.login.form.details.desc4", canUseRememberMe)
                         .optionalDropdown("geyser.auth.login.form.details.authserver", authServiceList, canUseAuthService)

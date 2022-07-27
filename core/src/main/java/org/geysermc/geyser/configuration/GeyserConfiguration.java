@@ -46,6 +46,7 @@ public interface GeyserConfiguration {
 
     boolean isNeedClientXbox();
 
+    boolean isCustomAuthServices();
     List<? extends IAuthServiceInfo> getAuthServices();
 
     boolean isEnabledRememberMe();

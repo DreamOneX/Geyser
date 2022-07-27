@@ -62,6 +62,8 @@ public abstract class GeyserJacksonConfiguration implements GeyserConfiguration 
     @JsonProperty("need-client-xbox")
     private boolean isNeedClientXbox = true;
 
+    @JsonProperty("use-custom-auth-services")
+    private boolean isCustomAuthServices = false;
     private List<AuthServiceInfo> authServices = Collections.emptyList();
 
     @JsonProperty("enabled-remember-me")

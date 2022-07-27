@@ -795,10 +795,13 @@ public class GeyserSession implements GeyserConnection, CommandSender {
         // Use a future to prevent timeouts as all the authentication is handled sync
         CompletableFuture.supplyAsync(() -> {
             String[] accessTokenSplit = accessTokenPair.split(":");
+            authServiceID = !accessTokenSplit[2].equals("mojang") ? geyser.getConfig().getAuthServices().stream().map(GeyserConfiguration.IAuthServiceInfo::getName).toList().indexOf(accessTokenSplit[2]) : -1;
+            if (authServiceID != -1 && !geyser.getConfig().isCustomAuthServices()){
+                return Boolean.FALSE;
+            }
             MojangAuthenticationService service = new MojangAuthenticationService(this.uuid().toString());
             service.setUsername(accessTokenSplit[0]);
             service.setAccessToken(accessTokenSplit[1]);
-            authServiceID = !accessTokenSplit[2].equals("mojang") ? geyser.getConfig().getAuthServices().stream().map(GeyserConfiguration.IAuthServiceInfo::getName).toList().indexOf(accessTokenSplit[2]) : -1;
             if (authServiceID != -1) {
                 service.setBaseUri(geyser.getConfig().getAuthServices().get(authServiceID).getApiBase() + "/authserver/");
             }
