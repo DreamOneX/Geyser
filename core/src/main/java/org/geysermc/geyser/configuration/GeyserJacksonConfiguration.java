@@ -59,6 +59,9 @@ public abstract class GeyserJacksonConfiguration implements GeyserConfiguration 
     private BedrockConfiguration bedrock = new BedrockConfiguration();
     private RemoteConfiguration remote = new RemoteConfiguration();
 
+    @JsonProperty("need-client-xbox")
+    private boolean isNeedClientXbox = true;
+
     private List<AuthServiceInfo> authServices = Collections.emptyList();
 
     @JsonProperty("saved-user-logins")

@@ -44,6 +44,8 @@ public interface GeyserConfiguration {
 
     IRemoteConfiguration getRemote();
 
+    boolean isNeedClientXbox();
+
     List<? extends IAuthServiceInfo> getAuthServices();
 
     List<String> getSavedUserLogins();
