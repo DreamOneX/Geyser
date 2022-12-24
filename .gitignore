@@ -246,3 +246,5 @@ locales/
 /dump.json
 /saved-refresh-tokens.json
 /languages/
+
+.DS_Store
