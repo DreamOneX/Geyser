@@ -30,6 +30,8 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.google.common.collect.ImmutableMap;
 import com.nukkitx.nbt.*;
 import com.nukkitx.protocol.bedrock.v527.Bedrock_v527;
+import com.nukkitx.protocol.bedrock.v544.Bedrock_v544;
+import com.nukkitx.protocol.bedrock.v560.Bedrock_v560;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.ints.IntSet;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
@@ -56,17 +58,7 @@ import java.util.zip.GZIPInputStream;
 /**
  * Populates the block registries.
  */
-public class BlockRegistryPopulator {
-    private static final ImmutableMap<ObjectIntPair<String>, BiFunction<String, NbtMapBuilder, String>> BLOCK_MAPPERS;
-    private static final BiFunction<String, NbtMapBuilder, String> EMPTY_MAPPER = (bedrockIdentifier, statesBuilder) -> null;
-
-    static {
-        ImmutableMap.Builder<ObjectIntPair<String>, BiFunction<String, NbtMapBuilder, String>> stateMapperBuilder = ImmutableMap.<ObjectIntPair<String>, BiFunction<String, NbtMapBuilder, String>>builder()
-                .put(ObjectIntPair.of("1_19_0", Bedrock_v527.V527_CODEC.getProtocolVersion()), EMPTY_MAPPER);
-
-        BLOCK_MAPPERS = stateMapperBuilder.build();
-    }
-
+public final class BlockRegistryPopulator {
     /**
      * Stores the raw blocks JSON until it is no longer needed.
      */
@@ -80,7 +72,13 @@ public class BlockRegistryPopulator {
     }
 
     private static void registerBedrockBlocks() {
-        for (Map.Entry<ObjectIntPair<String>, BiFunction<String, NbtMapBuilder, String>> palette : BLOCK_MAPPERS.entrySet()) {
+        BiFunction<String, NbtMapBuilder, String> emptyMapper = (bedrockIdentifier, statesBuilder) -> null;
+        ImmutableMap<ObjectIntPair<String>, BiFunction<String, NbtMapBuilder, String>> blockMappers = ImmutableMap.<ObjectIntPair<String>, BiFunction<String, NbtMapBuilder, String>>builder()
+                .put(ObjectIntPair.of("1_19_20", Bedrock_v544.V544_CODEC.getProtocolVersion()), emptyMapper)
+                .put(ObjectIntPair.of("1_19_50", Bedrock_v560.V560_CODEC.getProtocolVersion()), emptyMapper)
+                .build();
+
+        for (Map.Entry<ObjectIntPair<String>, BiFunction<String, NbtMapBuilder, String>> palette : blockMappers.entrySet()) {
             NbtList<NbtMap> blocksTag;
             try (InputStream stream = GeyserImpl.getInstance().getBootstrap().getResource(String.format("bedrock/block_palette.%s.nbt", palette.getKey().key()));
                  NBTInputStream nbtInputStream = new NBTInputStream(new DataInputStream(new GZIPInputStream(stream)), true, true)) {
@@ -95,7 +93,9 @@ public class BlockRegistryPopulator {
 
             int stateVersion = -1;
             for (int i = 0; i < blocksTag.size(); i++) {
-                NbtMap tag = blocksTag.get(i);
+                NbtMapBuilder builder = blocksTag.get(i).toBuilder();
+                builder.remove("name_hash"); // Quick workaround - was added in 1.19.20
+                NbtMap tag = builder.build();
                 if (blockStateOrderedMap.containsKey(tag)) {
                     throw new AssertionError("Duplicate block states in Bedrock palette: " + tag);
                 }
@@ -111,7 +111,7 @@ public class BlockRegistryPopulator {
             int movingBlockRuntimeId = -1;
             Iterator<Map.Entry<String, JsonNode>> blocksIterator = BLOCKS_JSON.fields();
 
-            BiFunction<String, NbtMapBuilder, String> stateMapper = BLOCK_MAPPERS.getOrDefault(palette.getKey(), EMPTY_MAPPER);
+            BiFunction<String, NbtMapBuilder, String> stateMapper = blockMappers.getOrDefault(palette.getKey(), emptyMapper);
 
             int[] javaToBedrockBlocks = new int[BLOCKS_JSON.size()];
 
@@ -231,7 +231,7 @@ public class BlockRegistryPopulator {
             BlockMapping.BlockMappingBuilder builder = BlockMapping.builder();
             JsonNode hardnessNode = entry.getValue().get("block_hardness");
             if (hardnessNode != null) {
-                builder.hardness(hardnessNode.doubleValue());
+                builder.hardness(hardnessNode.floatValue());
             }
 
             JsonNode canBreakWithHandNode = entry.getValue().get("can_break_with_hand");

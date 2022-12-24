@@ -30,19 +30,22 @@ import com.github.steveice10.mc.protocol.data.game.chunk.DataPalette;
 import com.github.steveice10.mc.protocol.data.game.chunk.palette.GlobalPalette;
 import com.github.steveice10.mc.protocol.data.game.chunk.palette.Palette;
 import com.github.steveice10.mc.protocol.data.game.chunk.palette.SingletonPalette;
-import com.github.steveice10.opennbt.tag.builtin.*;
+import com.github.steveice10.opennbt.tag.builtin.CompoundTag;
+import com.github.steveice10.opennbt.tag.builtin.IntTag;
+import com.github.steveice10.opennbt.tag.builtin.ListTag;
+import com.github.steveice10.opennbt.tag.builtin.StringTag;
 import it.unimi.dsi.fastutil.ints.Int2IntMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntList;
 import it.unimi.dsi.fastutil.ints.IntLists;
-import org.geysermc.geyser.session.GeyserSession;
 import org.geysermc.geyser.level.chunk.BlockStorage;
 import org.geysermc.geyser.level.chunk.GeyserChunkSection;
 import org.geysermc.geyser.level.chunk.bitarray.BitArray;
 import org.geysermc.geyser.level.chunk.bitarray.BitArrayVersion;
 import org.geysermc.geyser.level.chunk.bitarray.SingletonBitArray;
 import org.geysermc.geyser.registry.Registries;
-import org.geysermc.geyser.util.JavaCodecEntry;
+import org.geysermc.geyser.session.GeyserSession;
+import org.geysermc.geyser.util.JavaCodecUtil;
 import org.geysermc.geyser.util.MathUtils;
 
 // Array index formula by https://wiki.vg/Chunk_Format
@@ -56,7 +59,7 @@ public class BiomeTranslator {
         ListTag serverBiomes = worldGen.get("value");
         session.setBiomeGlobalPalette(MathUtils.getGlobalPaletteForSize(serverBiomes.size()));
 
-        for (CompoundTag biomeTag : JavaCodecEntry.iterateAsTag(worldGen)) {
+        for (CompoundTag biomeTag : JavaCodecUtil.iterateAsTag(worldGen)) {
             String javaIdentifier = ((StringTag) biomeTag.get("name")).getValue();
             int bedrockId = Registries.BIOME_IDENTIFIERS.get().getOrDefault(javaIdentifier, 0);
             int javaId = ((IntTag) biomeTag.get("id")).getValue();

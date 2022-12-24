@@ -27,7 +27,9 @@ package org.geysermc.geyser.translator.text;
 
 import com.github.steveice10.mc.protocol.data.DefaultComponentSerializer;
 import com.github.steveice10.mc.protocol.data.game.scoreboard.TeamColor;
+import com.nukkitx.protocol.bedrock.packet.TextPacket;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.TranslatableComponent;
 import net.kyori.adventure.text.renderer.TranslatableComponentRenderer;
 import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
@@ -36,8 +38,7 @@ import org.geysermc.geyser.GeyserImpl;
 import org.geysermc.geyser.session.GeyserSession;
 import org.geysermc.geyser.text.*;
 
-import java.util.EnumMap;
-import java.util.Map;
+import java.util.*;
 
 public class MessageTranslator {
     // These are used for handling the translations of the messages
@@ -201,6 +202,28 @@ public class MessageTranslator {
         return GSON_SERIALIZER.serialize(component);
     }
 
+
+    /**
+     * Convert legacy format message to plain text
+     *
+     * @param message Message to convert
+     * @return The plain text of the message
+     */
+    public static String convertToPlainText(String message) {
+        char[] input = message.toCharArray();
+        char[] output = new char[input.length];
+        int outputSize = 0;
+        for (int i = 0, inputLength = input.length; i < inputLength; i++) {
+            char c = input[i];
+            if (c == ChatColor.ESCAPE) {
+                i++;
+            } else {
+                output[outputSize++] = c;
+            }
+        }
+        return new String(output, 0, outputSize);
+    }
+
     /**
      * Convert JSON and legacy format message to plain text
      *
@@ -228,6 +251,46 @@ public class MessageTranslator {
         return PlainTextComponentSerializer.plainText().serialize(messageComponent);
     }
 
+    public static void handleChatPacket(GeyserSession session, Component message, int chatType, Component targetName, Component sender) {
+        TextPacket textPacket = new TextPacket();
+        textPacket.setPlatformChatId("");
+        textPacket.setSourceName("");
+        textPacket.setXuid(session.getAuthData().xuid());
+        textPacket.setType(TextPacket.Type.CHAT);
+
+        textPacket.setNeedsTranslation(false);
+
+        TextDecoration decoration = session.getChatTypes().get(chatType);
+        if (decoration != null) {
+            // As of 1.19 - do this to apply all the styling for signed messages
+            // Though, Bedrock cannot care about the signed stuff.
+            TranslatableComponent.Builder withDecoration = Component.translatable()
+                    .key(decoration.translationKey())
+                    .style(decoration.style());
+            Set<TextDecoration.Parameter> parameters = decoration.parameters();
+            List<Component> args = new ArrayList<>(3);
+            if (parameters.contains(TextDecoration.Parameter.TARGET)) {
+                args.add(targetName);
+            }
+            if (parameters.contains(TextDecoration.Parameter.SENDER)) {
+                args.add(sender);
+            }
+            if (parameters.contains(TextDecoration.Parameter.CONTENT)) {
+                args.add(message);
+            }
+            withDecoration.args(args);
+            textPacket.setMessage(MessageTranslator.convertMessage(withDecoration.build(), session.locale()));
+        } else {
+            session.getGeyser().getLogger().debug("Likely illegal chat type detection found.");
+            if (session.getGeyser().getConfig().isDebugMode()) {
+                Thread.dumpStack();
+            }
+            textPacket.setMessage(MessageTranslator.convertMessage(message, session.locale()));
+        }
+
+        session.sendUpstreamPacket(textPacket);
+    }
+
     /**
      * Convert a team color to a chat color
      *
@@ -247,7 +310,7 @@ public class MessageTranslator {
      */
     public static boolean isTooLong(String message, GeyserSession session) {
         if (message.length() > 256) {
-            session.sendMessage(GeyserLocale.getPlayerLocaleString("geyser.chat.too_long", session.getLocale(), message.length()));
+            session.sendMessage(GeyserLocale.getPlayerLocaleString("geyser.chat.too_long", session.locale(), message.length()));
             return true;
         }
 
