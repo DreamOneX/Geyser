@@ -41,12 +41,12 @@ import org.bukkit.event.block.BlockPistonEvent;
 import org.bukkit.event.block.BlockPistonExtendEvent;
 import org.bukkit.event.block.BlockPistonRetractEvent;
 import org.geysermc.geyser.GeyserImpl;
-import org.geysermc.geyser.session.GeyserSession;
-import org.geysermc.geyser.session.cache.PistonCache;
 import org.geysermc.geyser.level.block.BlockStateValues;
-import org.geysermc.geyser.translator.level.block.entity.PistonBlockEntity;
 import org.geysermc.geyser.level.physics.Direction;
 import org.geysermc.geyser.platform.spigot.world.manager.GeyserSpigotWorldManager;
+import org.geysermc.geyser.session.GeyserSession;
+import org.geysermc.geyser.session.cache.PistonCache;
+import org.geysermc.geyser.translator.level.block.entity.PistonBlockEntity;
 
 import java.util.List;
 import java.util.Map;
@@ -105,13 +105,10 @@ public class GeyserPistonListener implements Listener {
             // Trying to grab the blocks from the world like other platforms would result in the moving piston block
             // being returned instead.
             if (!blocksFilled) {
-                // Blocks currently require a player for 1.12, so let's just leech off one player to get all blocks
-                // and call it a day for the rest of the sessions (mostly to save on execution time)
                 List<Block> blocks = isExtend ? ((BlockPistonExtendEvent) event).getBlocks() : ((BlockPistonRetractEvent) event).getBlocks();
                 for (Block block : blocks) {
                     Location attachedLocation = block.getLocation();
-                    int blockId = worldManager.getBlockNetworkId(player, block,
-                            attachedLocation.getBlockX(), attachedLocation.getBlockY(), attachedLocation.getBlockZ());
+                    int blockId = worldManager.getBlockNetworkId(block);
                     // Ignore blocks that will be destroyed
                     if (BlockStateValues.canPistonMoveBlock(blockId, isExtend)) {
                         attachedBlocks.put(getVector(attachedLocation), blockId);
@@ -120,7 +117,7 @@ public class GeyserPistonListener implements Listener {
                 blocksFilled = true;
             }
 
-            int pistonBlockId = worldManager.getBlockNetworkId(player, event.getBlock(), location.getBlockX(), location.getBlockY(), location.getBlockZ());
+            int pistonBlockId = worldManager.getBlockNetworkId(event.getBlock());
             // event.getDirection() is unreliable
             Direction orientation = BlockStateValues.getPistonOrientation(pistonBlockId);
 

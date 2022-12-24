@@ -42,8 +42,12 @@ public class GeyserMappingItem {
     @JsonProperty("stack_size") int stackSize = 64;
     @JsonProperty("tool_type") String toolType;
     @JsonProperty("tool_tier") String toolTier;
+    @JsonProperty("armor_type") String armorType;
+    @JsonProperty("protection_value") int protectionValue;
     @JsonProperty("max_damage") int maxDamage = 0;
     @JsonProperty("repair_materials") List<String> repairMaterials;
     @JsonProperty("has_suspicious_stew_effect") boolean hasSuspiciousStewEffect = false;
     @JsonProperty("dye_color") int dyeColor = -1;
+    @JsonProperty("is_edible") boolean edible = false;
+    @JsonProperty("is_entity_placer") boolean entityPlacer = false;
 }

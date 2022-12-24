@@ -230,7 +230,7 @@ public class LoginEncryptionUtils {
 
         session.sendForm(
                 SimpleForm.builder()
-                        .translator(GeyserLocale::getPlayerLocaleString, session.getLocale())
+                        .translator(GeyserLocale::getPlayerLocaleString, session.locale())
                         .title("geyser.auth.login.form.notice.title")
                         .content("geyser.auth.login.form.notice.desc")
                         .optionalButton("geyser.auth.login.form.notice.btn_login.mojang", isPasswordAuthEnabled)
@@ -245,17 +245,11 @@ public class LoginEncryptionUtils {
                             }
 
                             if (response.clickedButtonId() == 1) {
-                                if (isPasswordAuthEnabled) {
-                                    session.setMicrosoftAccount(true);
-                                    buildAndShowMicrosoftAuthenticationWindow(session);
-                                } else {
-                                    // Just show the OAuth code
-                                    session.authenticateWithMicrosoftCode();
-                                }
+                                session.authenticateWithMicrosoftCode();
                                 return;
                             }
 
-                            session.disconnect(GeyserLocale.getPlayerLocaleString("geyser.auth.login.form.disconnect", session.getLocale()));
+                            session.disconnect(GeyserLocale.getPlayerLocaleString("geyser.auth.login.form.disconnect", session.locale()));
                         }));
     }
 
@@ -265,7 +259,7 @@ public class LoginEncryptionUtils {
     public static void buildAndShowConsentWindow(GeyserSession session) {
         session.sendForm(
                 SimpleForm.builder()
-                        .translator(LoginEncryptionUtils::translate, session.getLocale())
+                        .translator(LoginEncryptionUtils::translate, session.locale())
                         .title("%gui.signIn")
                         .content("""
                                 geyser.auth.login.save_token.warning
@@ -280,7 +274,7 @@ public class LoginEncryptionUtils {
     public static void buildAndShowTokenExpiredWindow(GeyserSession session) {
         session.sendForm(
                 SimpleForm.builder()
-                        .translator(LoginEncryptionUtils::translate, session.getLocale())
+                        .translator(LoginEncryptionUtils::translate, session.locale())
                         .title("geyser.auth.login.form.expired")
                         .content("""
                                 geyser.auth.login.save_token.expired
@@ -294,7 +288,7 @@ public class LoginEncryptionUtils {
     public static void buildAndShowAccessTokenExpiredWindow(GeyserSession session) {
         session.sendForm(
                 SimpleForm.builder()
-                        .translator(LoginEncryptionUtils::translate, session.getLocale())
+                        .translator(LoginEncryptionUtils::translate, session.locale())
                         .title("geyser.auth.login.form.expired")
                         .content("""
                                 geyser.auth.login.access_token.expired
@@ -331,7 +325,7 @@ public class LoginEncryptionUtils {
         session.getGeyser().getConfig().getAuthServices().forEach(info -> authServiceList.add(info.getName()));
         session.sendForm(
                 CustomForm.builder()
-                        .translator(GeyserLocale::getPlayerLocaleString, session.getLocale())
+                        .translator(GeyserLocale::getPlayerLocaleString, session.locale())
                         .title("geyser.auth.login.form.details.title")
                         .optionalLabel("geyser.auth.login.form.details.desc1", !canUseAuthService && !session.isMicrosoftAccount())
                         .optionalLabel("geyser.auth.login.form.details.desc2", session.isMicrosoftAccount())
@@ -342,13 +336,7 @@ public class LoginEncryptionUtils {
                         .input("geyser.auth.login.form.details.pass", "123456", "")
                         .optionalToggle("geyser.auth.login.form.details.remember", true, canUseRememberMe)
                         .invalidResultHandler(() -> buildAndShowLoginDetailsWindow(session))
-                        .closedResultHandler(() -> {
-                            if (session.isMicrosoftAccount()) {
-                                buildAndShowMicrosoftAuthenticationWindow(session);
-                            } else {
-                                buildAndShowLoginWindow(session);
-                            }
-                        })
+                        .closedResultHandler(() -> buildAndShowLoginWindow(session))
                         .validResultHandler((response) -> {
                             session.setAuthServiceID(canUseAuthService ? response.asDropdown(4)-1 : -1);
                             session.authenticate(
@@ -356,29 +344,6 @@ public class LoginEncryptionUtils {
                                     response.asInput(6),
                                     canUseRememberMe && response.asToggle(7)
                             );
-                        }));
-    }
-
-    /**
-     * Prompts the user between either OAuth code login or manual password authentication
-     */
-    public static void buildAndShowMicrosoftAuthenticationWindow(GeyserSession session) {
-        session.sendForm(
-                SimpleForm.builder()
-                        .translator(GeyserLocale::getPlayerLocaleString, session.getLocale())
-                        .title("geyser.auth.login.form.notice.btn_login.microsoft")
-                        .button("geyser.auth.login.method.browser")
-                        .button("geyser.auth.login.method.password")
-                        .button("geyser.auth.login.form.notice.btn_disconnect")
-                        .closedOrInvalidResultHandler(() -> buildAndShowLoginWindow(session))
-                        .validResultHandler((response) -> {
-                            if (response.clickedButtonId() == 0) {
-                                session.authenticateWithMicrosoftCode();
-                            } else if (response.clickedButtonId() == 1) {
-                                buildAndShowLoginDetailsWindow(session);
-                            } else {
-                                session.disconnect(GeyserLocale.getPlayerLocaleString("geyser.auth.login.form.disconnect", session.getLocale()));
-                            }
                         }));
     }
 
@@ -397,7 +362,7 @@ public class LoginEncryptionUtils {
         if (timeout != 0) {
             message.append("\n\n")
                     .append(ChatColor.RESET)
-                    .append(GeyserLocale.getPlayerLocaleString("geyser.auth.login.timeout", session.getLocale(), String.valueOf(timeout)));
+                    .append(GeyserLocale.getPlayerLocaleString("geyser.auth.login.timeout", session.locale(), String.valueOf(timeout)));
         }
 
         session.sendForm(
@@ -406,10 +371,10 @@ public class LoginEncryptionUtils {
                         .content(message.toString())
                         .button1("%gui.done")
                         .button2("%menu.disconnect")
-                        .closedOrInvalidResultHandler(() -> buildAndShowMicrosoftAuthenticationWindow(session))
+                        .closedOrInvalidResultHandler(() -> buildAndShowLoginWindow(session))
                         .validResultHandler((response) -> {
                             if (response.clickedButtonId() == 1) {
-                                session.disconnect(GeyserLocale.getPlayerLocaleString("geyser.auth.login.form.disconnect", session.getLocale()));
+                                session.disconnect(GeyserLocale.getPlayerLocaleString("geyser.auth.login.form.disconnect", session.locale()));
                             }
                         })
         );

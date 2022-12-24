@@ -122,7 +122,7 @@ public abstract class ItemTranslator {
                 }
             }
             if (itemStack.getNbt().isEmpty()) {
-                // Otherwise, seems to causes issues with villagers accepting books, and I don't see how this will break anything else. - Camotoy
+                // Otherwise, seems to cause issues with villagers accepting books, and I don't see how this will break anything else. - Camotoy
                 itemStack = new ItemStack(itemStack.getId(), itemStack.getAmount(), null);
             }
         }
@@ -159,7 +159,7 @@ public abstract class ItemTranslator {
 
         nbt = translateDisplayProperties(session, nbt, bedrockItem);
         if (session.isAdvancedTooltips()) {
-            nbt = addAdvancedTooltips(nbt, bedrockItem, session.getLocale());
+            nbt = addAdvancedTooltips(nbt, bedrockItem, session.locale());
         }
 
         ItemStack itemStack = new ItemStack(stack.getId(), stack.getAmount(), nbt);
@@ -173,13 +173,15 @@ public abstract class ItemTranslator {
         if (nbt != null) {
             // Translate the canDestroy and canPlaceOn Java NBT
             ListTag canDestroy = nbt.get("CanDestroy");
-            String[] canBreak = new String[0];
             ListTag canPlaceOn = nbt.get("CanPlaceOn");
-            String[] canPlace = new String[0];
-            canBreak = getCanModify(canDestroy, canBreak);
-            canPlace = getCanModify(canPlaceOn, canPlace);
-            builder.canBreak(canBreak);
-            builder.canPlace(canPlace);
+            String[] canBreak = getCanModify(canDestroy);
+            String[] canPlace = getCanModify(canPlaceOn);
+            if (canBreak != null) {
+                builder.canBreak(canBreak);
+            }
+            if (canPlace != null) {
+                builder.canPlace(canPlace);
+            }
         }
 
         return builder.build();
@@ -241,12 +243,11 @@ public abstract class ItemTranslator {
      * In Java, this is treated as normal NBT, but in Bedrock, these arguments are extra parts of the item data itself.
      *
      * @param canModifyJava the list of items in Java
-     * @param canModifyBedrock the empty list of items in Bedrock
      * @return the new list of items in Bedrock
      */
-    private static String[] getCanModify(ListTag canModifyJava, String[] canModifyBedrock) {
+    private static String[] getCanModify(ListTag canModifyJava) {
         if (canModifyJava != null && canModifyJava.size() > 0) {
-            canModifyBedrock = new String[canModifyJava.size()];
+            String[] canModifyBedrock = new String[canModifyJava.size()];
             for (int i = 0; i < canModifyBedrock.length; i++) {
                 // Get the Java identifier of the block that can be placed
                 String block = ((StringTag) canModifyJava.get(i)).getValue();
@@ -256,21 +257,29 @@ public abstract class ItemTranslator {
                 // This will unfortunately be limited - for example, beds and banners will be translated weirdly
                 canModifyBedrock[i] = BlockRegistries.JAVA_TO_BEDROCK_IDENTIFIERS.getOrDefault(block, block).replace("minecraft:", "");
             }
+            return canModifyBedrock;
         }
-        return canModifyBedrock;
+        return null;
     }
 
     /**
-     * Given an item stack, determine the item mapping that should be applied to Bedrock players.
+     * Given an item stack, determine the Bedrock item ID that should be applied to Bedrock players.
      */
-    @Nonnull
-    public static ItemMapping getBedrockItemMapping(GeyserSession session, @Nonnull GeyserItemStack itemStack) {
+    public static int getBedrockItemId(GeyserSession session, @Nonnull GeyserItemStack itemStack) {
         if (itemStack.isEmpty()) {
-            return ItemMapping.AIR;
+            return ItemMapping.AIR.getJavaId();
         }
         int javaId = itemStack.getJavaId();
-        return ITEM_STACK_TRANSLATORS.getOrDefault(javaId, DEFAULT_TRANSLATOR)
+        ItemMapping mapping = ITEM_STACK_TRANSLATORS.getOrDefault(javaId, DEFAULT_TRANSLATOR)
                 .getItemMapping(javaId, itemStack.getNbt(), session.getItemMappings());
+
+        int customItemId = CustomItemTranslator.getCustomItem(itemStack.getNbt(), mapping);
+        if (customItemId == -1) {
+            // No custom item
+            return mapping.getBedrockId();
+        } else {
+            return customItemId;
+        }
     }
 
     private static final ItemTranslator DEFAULT_TRANSLATOR = new ItemTranslator() {
@@ -292,6 +301,10 @@ public abstract class ItemTranslator {
         if (itemStack.getNbt() != null) {
             builder.tag(this.translateNbtToBedrock(itemStack.getNbt()));
         }
+
+        CompoundTag nbt = itemStack.getNbt();
+        translateCustomItem(nbt, builder, mapping);
+
         return builder;
     }
 
@@ -313,66 +326,26 @@ public abstract class ItemTranslator {
     }
 
     protected NbtMap translateNbtToBedrock(CompoundTag tag) {
-        NbtMapBuilder builder = NbtMap.builder();
-        if (tag.getValue() != null && !tag.getValue().isEmpty()) {
-            for (String str : tag.getValue().keySet()) {
-                Tag javaTag = tag.get(str);
+        if (!tag.getValue().isEmpty()) {
+            NbtMapBuilder builder = NbtMap.builder();
+            for (Tag javaTag : tag.values()) {
                 Object translatedTag = translateToBedrockNBT(javaTag);
                 if (translatedTag == null)
                     continue;
 
                 builder.put(javaTag.getName(), translatedTag);
             }
+            return builder.build();
         }
-        return builder.build();
+        return NbtMap.EMPTY;
     }
 
     private Object translateToBedrockNBT(Tag tag) {
-        if (tag instanceof ByteArrayTag) {
-            return ((ByteArrayTag) tag).getValue();
-        }
-
-        if (tag instanceof ByteTag) {
-            return ((ByteTag) tag).getValue();
-        }
-
-        if (tag instanceof DoubleTag) {
-            return ((DoubleTag) tag).getValue();
-        }
-
-        if (tag instanceof FloatTag) {
-            return ((FloatTag) tag).getValue();
-        }
-
-        if (tag instanceof IntArrayTag) {
-            return ((IntArrayTag) tag).getValue();
-        }
-
-        if (tag instanceof IntTag) {
-            return ((IntTag) tag).getValue();
-        }
-
-        if (tag instanceof LongArrayTag) {
-            //Long array tag does not exist in BE
-            //LongArrayTag longArrayTag = (LongArrayTag) tag;
-            //return new com.nukkitx.nbt.tag.LongArrayTag(longArrayTag.getName(), longArrayTag.getValue());
-            return null;
-        }
-
-        if (tag instanceof LongTag) {
-            return ((LongTag) tag).getValue();
-        }
-
-        if (tag instanceof ShortTag) {
-            return ((ShortTag) tag).getValue();
-        }
-
-        if (tag instanceof StringTag) {
-            return ((StringTag) tag).getValue();
+        if (tag instanceof CompoundTag compoundTag) {
+            return translateNbtToBedrock(compoundTag);
         }
 
         if (tag instanceof ListTag listTag) {
-
             List<Object> tagList = new ArrayList<>();
             for (Tag value : listTag) {
                 tagList.add(translateToBedrockNBT(value));
@@ -384,11 +357,14 @@ public abstract class ItemTranslator {
             return new NbtList(type, tagList);
         }
 
-        if (tag instanceof CompoundTag compoundTag) {
-            return translateNbtToBedrock(compoundTag);
+        if (tag instanceof LongArrayTag) {
+            //Long array tag does not exist in BE
+            //LongArrayTag longArrayTag = (LongArrayTag) tag;
+            //return new com.nukkitx.nbt.tag.LongArrayTag(longArrayTag.getName(), longArrayTag.getValue());
+            return null;
         }
 
-        return null;
+        return tag.getValue();
     }
 
     private CompoundTag translateToJavaNBT(String name, NbtMap tag) {
@@ -416,7 +392,7 @@ public abstract class ItemTranslator {
         if (object instanceof byte[]) {
             return new ByteArrayTag(name, (byte[]) object);
         }
-        
+
         if (object instanceof Byte) {
             return new ByteTag(name, (byte) object);
         }
@@ -490,7 +466,7 @@ public abstract class ItemTranslator {
                 String name = tagName.getValue();
 
                 // Get the translated name and prefix it with a reset char
-                name = MessageTranslator.convertMessageLenient(name, session.getLocale());
+                name = MessageTranslator.convertMessageLenient(name, session.locale());
 
                 // Add the new name tag
                 display.put(new StringTag("Name", name));
@@ -518,55 +494,20 @@ public abstract class ItemTranslator {
 
             String translationKey = mapping.getTranslationString();
             // Reset formatting since Bedrock defaults to italics
-            display.put(new StringTag("Name", "§r§" + translationColor + MinecraftLocale.getLocaleString(translationKey, session.getLocale())));
+            display.put(new StringTag("Name", "§r§" + translationColor + MinecraftLocale.getLocaleString(translationKey, session.locale())));
         }
 
         return tag;
     }
 
     /**
-     * Checks if an {@link ItemStack} is equal to another item stack
-     *
-     * @param itemStack the item stack to check
-     * @param equalsItemStack the item stack to check if equal to
-     * @param checkAmount if the amount should be taken into account
-     * @param trueIfAmountIsGreater if this should return true if the amount of the
-     *                              first item stack is greater than that of the second
-     * @param checkNbt if NBT data should be checked
-     * @return if an item stack is equal to another item stack
+     * Translates the custom model data of an item
      */
-    public boolean equals(ItemStack itemStack, ItemStack equalsItemStack, boolean checkAmount, boolean trueIfAmountIsGreater, boolean checkNbt) {
-        if (itemStack.getId() != equalsItemStack.getId()) {
-            return false;
+    private static void translateCustomItem(CompoundTag nbt, ItemData.Builder builder, ItemMapping mapping) {
+        int bedrockId = CustomItemTranslator.getCustomItem(nbt, mapping);
+        if (bedrockId != -1) {
+            builder.id(bedrockId);
         }
-        if (checkAmount) {
-            if (trueIfAmountIsGreater) {
-                if (itemStack.getAmount() < equalsItemStack.getAmount()) {
-                    return false;
-                }
-            } else {
-                if (itemStack.getAmount() != equalsItemStack.getAmount()) {
-                    return false;
-                }
-            }
-        }
-
-        if (!checkNbt) {
-            return true;
-        }
-        if ((itemStack.getNbt() == null || itemStack.getNbt().isEmpty()) && (equalsItemStack.getNbt() != null && !equalsItemStack.getNbt().isEmpty())) {
-            return false;
-        }
-
-        if ((itemStack.getNbt() != null && !itemStack.getNbt().isEmpty() && (equalsItemStack.getNbt() == null || !equalsItemStack.getNbt().isEmpty()))) {
-            return false;
-        }
-
-        if (itemStack.getNbt() != null && equalsItemStack.getNbt() != null) {
-            return itemStack.getNbt().equals(equalsItemStack.getNbt());
-        }
-
-        return true;
     }
 
 }

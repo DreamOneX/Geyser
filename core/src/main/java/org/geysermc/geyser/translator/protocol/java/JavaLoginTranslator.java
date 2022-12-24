@@ -36,17 +36,17 @@ import com.nukkitx.protocol.bedrock.packet.GameRulesChangedPacket;
 import com.nukkitx.protocol.bedrock.packet.SetPlayerGameTypePacket;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import org.geysermc.floodgate.pluginmessage.PluginMessageChannels;
+import org.geysermc.geyser.api.network.AuthType;
 import org.geysermc.geyser.entity.type.player.SessionPlayerEntity;
 import org.geysermc.geyser.level.JavaDimension;
 import org.geysermc.geyser.session.GeyserSession;
-import org.geysermc.geyser.session.auth.AuthType;
 import org.geysermc.geyser.text.TextDecoration;
 import org.geysermc.geyser.translator.level.BiomeTranslator;
 import org.geysermc.geyser.translator.protocol.PacketTranslator;
 import org.geysermc.geyser.translator.protocol.Translator;
 import org.geysermc.geyser.util.ChunkUtils;
 import org.geysermc.geyser.util.DimensionUtils;
-import org.geysermc.geyser.util.JavaCodecEntry;
+import org.geysermc.geyser.util.JavaCodecUtil;
 import org.geysermc.geyser.util.PluginMessageUtils;
 
 import java.util.Map;
@@ -66,7 +66,7 @@ public class JavaLoginTranslator extends PacketTranslator<ClientboundLoginPacket
 
         Int2ObjectMap<TextDecoration> chatTypes = session.getChatTypes();
         chatTypes.clear();
-        for (CompoundTag tag : JavaCodecEntry.iterateAsTag(packet.getRegistry().get("minecraft:chat_type"))) {
+        for (CompoundTag tag : JavaCodecUtil.iterateAsTag(packet.getRegistry().get("minecraft:chat_type"))) {
             // The ID is NOT ALWAYS THE SAME! ViaVersion as of 1.19 adds two registry entries that do NOT match vanilla.
             int id = ((IntTag) tag.get("id")).getValue();
             CompoundTag element = tag.get("element");
@@ -87,6 +87,7 @@ public class JavaLoginTranslator extends PacketTranslator<ClientboundLoginPacket
             session.getWorldCache().removeScoreboard();
         }
         session.setWorldName(packet.getWorldName());
+        session.setLevels(packet.getWorldNames());
 
         BiomeTranslator.loadServerBiomes(session, packet.getRegistry());
         session.getTagCache().clear();
@@ -99,6 +100,7 @@ public class JavaLoginTranslator extends PacketTranslator<ClientboundLoginPacket
         if (needsSpawnPacket) {
             // The player has yet to spawn so let's do that using some of the information in this Java packet
             session.setDimension(newDimension);
+            DimensionUtils.setBedrockDimension(session, newDimension);
             session.connect();
 
             // It is now safe to send these packets
@@ -135,7 +137,7 @@ public class JavaLoginTranslator extends PacketTranslator<ClientboundLoginPacket
         session.sendDownstreamPacket(new ServerboundCustomPayloadPacket("minecraft:brand", PluginMessageUtils.getGeyserBrandData()));
 
         // register the plugin messaging channels used in Floodgate
-        if (session.getRemoteAuthType() == AuthType.FLOODGATE) {
+        if (session.remoteServer().authType() == AuthType.FLOODGATE) {
             session.sendDownstreamPacket(new ServerboundCustomPayloadPacket("minecraft:register", PluginMessageChannels.getFloodgateRegisterData()));
         }
 
@@ -146,7 +148,6 @@ public class JavaLoginTranslator extends PacketTranslator<ClientboundLoginPacket
             session.sendFog("minecraft:fog_hell");
         }
 
-        session.setDimensionType(dimensions.get(newDimension));
         ChunkUtils.loadDimension(session);
     }
 }
