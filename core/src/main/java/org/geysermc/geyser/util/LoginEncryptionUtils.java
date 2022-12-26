@@ -332,7 +332,7 @@ public class LoginEncryptionUtils {
                         .optionalLabel("geyser.auth.login.form.details.desc3", canUseAuthService)
                         .optionalLabel("geyser.auth.login.form.details.desc4", canUseRememberMe)
                         .optionalDropdown("geyser.auth.login.form.details.authserver", authServiceList, canUseAuthService)
-                        .input("geyser.auth.login.form.details.email", "account@geysermc.org", session.name())
+                        .input("geyser.auth.login.form.details.email", "account@geysermc.org", session.bedrockUsername())
                         .input("geyser.auth.login.form.details.pass", "123456", "")
                         .optionalToggle("geyser.auth.login.form.details.remember", true, canUseRememberMe)
                         .invalidResultHandler(() -> buildAndShowLoginDetailsWindow(session))
