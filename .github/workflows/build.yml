@@ -56,3 +56,14 @@ jobs:
         with:
           name: Geyser Velocity
           path: bootstrap/velocity/build/libs/Geyser-Velocity.jar
+      # Auto release
+      - name: Auto release
+        uses: "marvinpinto/action-automatic-releases@latest"
+        with:
+          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          automatic_release_tag: latest
+          prerelease: true
+          files: |
+            bootstrap/standalone/target/Geyser.jar
+            bootstrap/spigot/target/Geyser-Spigot.jar
+            LICENSE
